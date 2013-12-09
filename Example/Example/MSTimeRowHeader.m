@@ -37,7 +37,7 @@
     static NSDateFormatter *dateFormatter;
     if (!dateFormatter) {
         dateFormatter = [NSDateFormatter new];
-        dateFormatter.dateFormat = @"h a";
+        dateFormatter.dateFormat = @"HH:mm";
     }
     self.title.text = [dateFormatter stringFromDate:time];
     [self setNeedsLayout];

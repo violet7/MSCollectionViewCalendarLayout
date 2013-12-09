@@ -10,13 +10,6 @@
 
 @implementation MSEvent
 
-@dynamic remoteID;
-@dynamic start;
-@dynamic title;
-@dynamic location;
-@dynamic dateToBeDecided;
-@dynamic timeToBeDecided;
-
 - (NSDate *)day
 {
     return [self.start beginningOfDay];

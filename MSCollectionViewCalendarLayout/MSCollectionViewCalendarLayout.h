@@ -77,6 +77,9 @@ typedef NS_ENUM(NSUInteger, MSHeaderLayoutType) {
 // Since a "reloadData" on the UICollectionView doesn't call "prepareForCollectionViewUpdates:", this method must be called first to flush the internal caches
 - (void)invalidateLayoutCache;
 
+- (NSIndexSet *)sectionsInRect:(CGRect)rect;
+- (CGRect)rectForSection:(NSInteger)section;
+
 @end
 
 @protocol MSCollectionViewDelegateCalendarLayout <UICollectionViewDelegate>

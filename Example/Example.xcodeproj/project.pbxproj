@@ -29,6 +29,7 @@
 		3A9EDBB816DE8FAF0017C4ED /* MSCurrentTimeGridline.m in Sources */ = {isa = PBXBuildFile; fileRef = 3A9EDBB716DE8FAF0017C4ED /* MSCurrentTimeGridline.m */; };
 		3A9EDBBB16DE8FEB0017C4ED /* MSCurrentTimeIndicator.m in Sources */ = {isa = PBXBuildFile; fileRef = 3A9EDBBA16DE8FEB0017C4ED /* MSCurrentTimeIndicator.m */; };
 		73FE75D8C4884452BD700225 /* libPods.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 68FEEAE8C40D4C23B857EFA6 /* libPods.a */; };
+		C84818FC1855DB8B00120FB3 /* EventKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C84818FB1855DB8B00120FB3 /* EventKit.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -69,6 +70,7 @@
 		3A9EDBBA16DE8FEB0017C4ED /* MSCurrentTimeIndicator.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MSCurrentTimeIndicator.m; sourceTree = "<group>"; };
 		68FEEAE8C40D4C23B857EFA6 /* libPods.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libPods.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		6ADF134BF2C64AFAB7EFE53A /* Pods.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = Pods.xcconfig; path = Pods/Pods.xcconfig; sourceTree = SOURCE_ROOT; };
+		C84818FB1855DB8B00120FB3 /* EventKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = EventKit.framework; path = System/Library/Frameworks/EventKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -76,6 +78,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C84818FC1855DB8B00120FB3 /* EventKit.framework in Frameworks */,
 				3A71A5BB16DF4C0200AF09E5 /* SystemConfiguration.framework in Frameworks */,
 				3A71A5B916DF4BFC00AF09E5 /* MobileCoreServices.framework in Frameworks */,
 				3A9EDBB216DDF24C0017C4ED /* QuartzCore.framework in Frameworks */,
@@ -113,6 +116,7 @@
 		3A9EDB6F16DD8FF10017C4ED /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				C84818FB1855DB8B00120FB3 /* EventKit.framework */,
 				3A9EDBB116DDF24C0017C4ED /* QuartzCore.framework */,
 				3A9EDB7016DD8FF10017C4ED /* UIKit.framework */,
 				3A9EDB7216DD8FF10017C4ED /* Foundation.framework */,

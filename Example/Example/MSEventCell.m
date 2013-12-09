@@ -101,8 +101,8 @@
 - (void)setEvent:(MSEvent *)event
 {
     _event = event;
-    self.title.attributedText = [[NSAttributedString alloc] initWithString:event.title attributes:[self titleAttributesHighlighted:self.selected]];
-    self.location.attributedText = [[NSAttributedString alloc] initWithString:event.location attributes:[self subtitleAttributesHighlighted:self.selected]];;
+    self.title.attributedText = [[NSAttributedString alloc] initWithString:event.title ? event.title : @"" attributes:[self titleAttributesHighlighted:self.selected]];
+    self.location.attributedText = [[NSAttributedString alloc] initWithString:event.location ? event.location : @"" attributes:[self subtitleAttributesHighlighted:self.selected]];;
 }
 
 - (void)updateColors

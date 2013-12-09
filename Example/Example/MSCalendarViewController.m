@@ -19,15 +19,19 @@
 #import "MSCurrentTimeIndicator.h"
 #import "MSCurrentTimeGridline.h"
 
+#import <EventKit/EventKit.h>
+
 NSString * const MSEventCellReuseIdentifier = @"MSEventCellReuseIdentifier";
 NSString * const MSDayColumnHeaderReuseIdentifier = @"MSDayColumnHeaderReuseIdentifier";
 NSString * const MSTimeRowHeaderReuseIdentifier = @"MSTimeRowHeaderReuseIdentifier";
 
-@interface MSCalendarViewController () <MSCollectionViewDelegateCalendarLayout, NSFetchedResultsControllerDelegate>
-
+@interface MSCalendarViewController () <MSCollectionViewDelegateCalendarLayout>
+{
+    NSMutableArray* tempDays;
+}
 @property (nonatomic, strong) MSCollectionViewCalendarLayout *collectionViewCalendarLayout;
-@property (nonatomic, strong) NSFetchedResultsController *fetchedResultsController;
 
+@property (nonatomic) EKEventStore * store;
 @end
 
 @implementation MSCalendarViewController
@@ -40,11 +44,89 @@ NSString * const MSTimeRowHeaderReuseIdentifier = @"MSTimeRowHeaderReuseIdentifi
     return self;
 }
 
+-(void)scrollViewDidScroll:(UIScrollView *)scrollView {
+    if (_collectionViewCalendarLayout.sectionLayoutType == MSSectionLayoutTypeHorizontalTile) {
+        if (scrollView.contentOffset.x < 0.0f) {
+            [self appendPastDates];
+        }
+        if (scrollView.contentOffset.x > (scrollView.contentSize.width - CGRectGetWidth(scrollView.bounds))) {
+            [self appendFutureDates];
+        }
+    } else {
+        if (scrollView.contentOffset.y > (scrollView.contentSize.height - CGRectGetHeight(scrollView.bounds))) {
+            [self appendFutureDates];
+        }
+        if (scrollView.contentOffset.y < 0.0f) {
+            [self appendPastDates];
+        }
+    }
+}
+
+- (void) appendFutureDates {
+	
+	[self shiftDatesByComponents:((^{
+		NSDateComponents *dateComponents = [NSDateComponents new];
+		dateComponents.day = 15;
+		return dateComponents;
+	})())];
+	
+}
+
+- (void) appendPastDates {
+	
+	[self shiftDatesByComponents:((^{
+		NSDateComponents *dateComponents = [NSDateComponents new];
+		dateComponents.day = -15;
+		return dateComponents;
+	})())];
+	
+}
+
+-(NSInteger) daysBetweenDate: (NSDate *)firstDate andDate: (NSDate *)secondDate
+{
+    NSCalendar *currentCalendar = [NSCalendar currentCalendar];
+    NSDateComponents *components = [currentCalendar components: NSDayCalendarUnit
+                                                      fromDate: firstDate
+                                                        toDate: secondDate
+                                                       options: 0];
+    
+    NSInteger days = [components day];
+    return days;
+}
+
+- (void) shiftDatesByComponents:(NSDateComponents *)components {
+
+    NSIndexSet* set = [_collectionViewCalendarLayout sectionsInRect:self.collectionView.bounds];
+    CGRect fromRect = [_collectionViewCalendarLayout rectForSection:[set lastIndex]];
+    NSDate* fromDate = [tempDays objectAtIndex:components.day > 0 ? [set firstIndex] : [set lastIndex]];
+    NSDate* lastDate = [tempDays objectAtIndex:[set lastIndex]];
+    [tempDays removeAllObjects];
+    int toSection = 0;
+    
+    for (int i = 0; i < abs(components.day); i++) {
+        NSDateComponents * dateComponents = [[NSDateComponents alloc] init];
+        dateComponents.day = components.day > 0 ? i : (components.day + 1) + i;
+        
+        NSDate* date = [[NSCalendar currentCalendar] dateByAddingComponents:dateComponents toDate:fromDate options:0];
+        [tempDays addObject:date];
+        if ([self daysBetweenDate:lastDate andDate:date] == 0)
+            toSection = i;
+    }
+    
+    [self.collectionViewCalendarLayout invalidateLayoutCache];
+    [self.collectionView reloadData];
+    
+    CGRect toRect = [_collectionViewCalendarLayout rectForSection:toSection];
+    [self.collectionView setContentOffset:CGPointMake(toRect.origin.x - fromRect.origin.x + self.collectionView.contentOffset.x , toRect.origin.y - fromRect.origin.y + self.collectionView.contentOffset.y)];
+}
+
 - (void)viewDidLoad
 {
     [super viewDidLoad];
     
+    self.collectionViewCalendarLayout.sectionLayoutType = MSSectionLayoutTypeHorizontalTile;
     self.collectionView.backgroundColor = [UIColor whiteColor];
+    self.collectionView.showsHorizontalScrollIndicator = NO;
     
     [self.collectionView registerClass:MSEventCell.class forCellWithReuseIdentifier:MSEventCellReuseIdentifier];
     [self.collectionView registerClass:MSDayColumnHeader.class forSupplementaryViewOfKind:MSCollectionElementKindDayColumnHeader withReuseIdentifier:MSDayColumnHeaderReuseIdentifier];
@@ -58,16 +140,7 @@ NSString * const MSTimeRowHeaderReuseIdentifier = @"MSTimeRowHeaderReuseIdentifi
     [self.collectionViewCalendarLayout registerClass:MSTimeRowHeaderBackground.class forDecorationViewOfKind:MSCollectionElementKindTimeRowHeaderBackground];
     [self.collectionViewCalendarLayout registerClass:MSDayColumnHeaderBackground.class forDecorationViewOfKind:MSCollectionElementKindDayColumnHeaderBackground];
     
-    NSFetchRequest *fetchRequest = [NSFetchRequest fetchRequestWithEntityName:@"Event"];
-    fetchRequest.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"start" ascending:YES]];
-    // No events with undecided times or dates
-    fetchRequest.predicate = [NSPredicate predicateWithFormat:@"(dateToBeDecided == NO) AND (timeToBeDecided == NO)"];
-    // Divide into sections by the "day" key path
-    self.fetchedResultsController = [[NSFetchedResultsController alloc] initWithFetchRequest:fetchRequest managedObjectContext:[RKManagedObjectStore defaultStore].mainQueueManagedObjectContext sectionNameKeyPath:@"day" cacheName:nil];
-    self.fetchedResultsController.delegate = self;
-    [self.fetchedResultsController performFetch:nil];
-    
-    [self loadData];
+    [self store];
 }
 
 - (void)viewDidAppear:(BOOL)animated
@@ -96,43 +169,43 @@ NSString * const MSTimeRowHeaderReuseIdentifier = @"MSTimeRowHeaderReuseIdentifi
 
 - (void)loadData
 {
-    [[RKObjectManager sharedManager] getObjectsAtPath:@"events" parameters:@{
-        @"lat" : @(39.750),             // Denver latitude
-        @"lon" : @(-104.984),           // Denver longitude
-        @"range" : @"10mi",             // 10mi search radius
-        @"taxonomies.name" : @"sports", // Only "sports" taxonomies
-        @"per_page" : @500              // Up to 500 results
-    } success:^(RKObjectRequestOperation *operation, RKMappingResult *mappingResult) {
-        NSLog(@"Successfully loaded %@ events", @(mappingResult.count));
-    } failure:^(RKObjectRequestOperation *operation, NSError *error) {
-        [[[UIAlertView alloc] initWithTitle:@"Unable to Load Events" message:[error localizedDescription] delegate:nil cancelButtonTitle:@"Continue" otherButtonTitles:nil] show];
-    }];
-}
-
-#pragma mark - NSFetchedResultsControllerDelegate
-
-- (void)controllerDidChangeContent:(NSFetchedResultsController *)controller
-{
-    [self.collectionViewCalendarLayout invalidateLayoutCache];
-    [self.collectionView reloadData];
+        tempDays = [NSMutableArray array];
+        NSDate* fromDate = [NSDate date];
+        NSDateComponents * dateComponents = [[NSDateComponents alloc] init];
+        dateComponents.day = 0;
+        fromDate = [[NSCalendar currentCalendar] dateByAddingComponents:dateComponents toDate:fromDate options:0];
+        for (int i = 0; i < 15; i++) {
+            dateComponents = [[NSDateComponents alloc] init];
+            dateComponents.day = i;
+            NSDate* date = [[NSCalendar currentCalendar] dateByAddingComponents:dateComponents toDate:fromDate options:0];
+            [tempDays addObject:date];
+        }
+        
+        [self.collectionViewCalendarLayout invalidateLayoutCache];
+        [self.collectionView reloadData];
 }
 
 #pragma mark - UICollectionViewDataSource
 
 - (NSInteger)numberOfSectionsInCollectionView:(UICollectionView *)collectionView
 {
-    return self.fetchedResultsController.sections.count;
+    return [tempDays count];
 }
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section
 {
-    return [(id <NSFetchedResultsSectionInfo>)self.fetchedResultsController.sections[section] numberOfObjects];
+    NSArray * events = [self eventsForDate:[tempDays objectAtIndex:section]];
+    return [events count];
 }
 
 - (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath
 {
+    NSArray * events = [self eventsForDate:[tempDays objectAtIndex:indexPath.section]];
+    EKEvent * ekEvent = [events objectAtIndex:indexPath.item];
     MSEventCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:MSEventCellReuseIdentifier forIndexPath:indexPath];
-    cell.event = [self.fetchedResultsController objectAtIndexPath:indexPath];
+    MSEvent *event = [[MSEvent alloc] init];
+    event.title = ekEvent.title;
+    cell.event = event;
     return cell;
 }
 
@@ -158,22 +231,24 @@ NSString * const MSTimeRowHeaderReuseIdentifier = @"MSTimeRowHeaderReuseIdentifi
 
 - (NSDate *)collectionView:(UICollectionView *)collectionView layout:(MSCollectionViewCalendarLayout *)collectionViewCalendarLayout dayForSection:(NSInteger)section
 {
-    id <NSFetchedResultsSectionInfo> sectionInfo = [self.fetchedResultsController.sections objectAtIndex:section];
-    MSEvent *event = [sectionInfo.objects firstObject];
-    return event.day;
+    return [tempDays objectAtIndex:section];
 }
 
 - (NSDate *)collectionView:(UICollectionView *)collectionView layout:(MSCollectionViewCalendarLayout *)collectionViewCalendarLayout startTimeForItemAtIndexPath:(NSIndexPath *)indexPath
 {
-    MSEvent *event = [self.fetchedResultsController objectAtIndexPath:indexPath];
-    return event.start;
+    NSArray * events = [self eventsForDate:[tempDays objectAtIndex:indexPath.section]];
+    EKEvent * ekEvent = [events objectAtIndex:indexPath.item];
+    return ekEvent.startDate;
+    return [tempDays objectAtIndex:indexPath.section];
 }
 
 - (NSDate *)collectionView:(UICollectionView *)collectionView layout:(MSCollectionViewCalendarLayout *)collectionViewCalendarLayout endTimeForItemAtIndexPath:(NSIndexPath *)indexPath
 {
-    MSEvent *event = [self.fetchedResultsController objectAtIndexPath:indexPath];
-    // Most sports last ~3 hours, and SeatGeek doesn't provide an end time
-    return [event.start dateByAddingTimeInterval:(60 * 60 * 3)];
+    NSArray * events = [self eventsForDate:[tempDays objectAtIndex:indexPath.section]];
+    EKEvent * ekEvent = [events objectAtIndex:indexPath.item];
+    return ekEvent.endDate;
+    return [[tempDays objectAtIndex:indexPath.section] dateByAddingTimeInterval:(60 * 60 * 3)];
+        //return [event.start dateByAddingTimeInterval:(60 * 60 * 3)];
 }
 
 - (NSDate *)currentTimeComponentsForCollectionView:(UICollectionView *)collectionView layout:(MSCollectionViewCalendarLayout *)collectionViewCalendarLayout
@@ -181,4 +256,33 @@ NSString * const MSTimeRowHeaderReuseIdentifier = @"MSTimeRowHeaderReuseIdentifi
     return [NSDate date];
 }
 
+- (EKEventStore *)store
+{
+    if (_store == nil)
+      {
+        _store = [[EKEventStore alloc] init];
+          if ([EKEventStore authorizationStatusForEntityType:(EKEntityTypeEvent)] != EKAuthorizationStatusAuthorized)
+              [_store requestAccessToEntityType:(EKEntityTypeEvent) completion:^(BOOL granted, NSError *error) {
+                  if (granted) [self loadData];
+                  ;
+              }]; else
+                  [self loadData];
+      }
+    return _store;
+}
+
+- (NSArray *)eventsForDate:(NSDate *)date
+{
+    
+    NSDateComponents * componentsBegin = [[NSCalendar currentCalendar] components:NSYearCalendarUnit|NSMonthCalendarUnit|NSDayCalendarUnit fromDate:date];
+    NSDateComponents * componentsDay = [[NSDateComponents alloc] init];
+    componentsDay.day = 1;
+    
+    NSDate * dayBegin = [[NSCalendar currentCalendar] dateFromComponents:componentsBegin];
+    NSDate * dayEnd = [[NSCalendar currentCalendar] dateByAddingComponents:componentsDay toDate:dayBegin options:0];
+    
+    NSPredicate * predicate = [self.store predicateForEventsWithStartDate:dayBegin endDate:dayEnd calendars:nil];
+    return [self.store eventsMatchingPredicate:predicate];
+
+}
 @end

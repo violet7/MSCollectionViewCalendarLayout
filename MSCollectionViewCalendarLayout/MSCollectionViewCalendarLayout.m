@@ -118,7 +118,6 @@ NSUInteger const MSCollectionMinBackgroundZ = 0.0;
 // Scrolling
 - (NSInteger)closestSectionToCurrentTime;
 // Section Sizing
-- (CGRect)rectForSection:(NSInteger)section;
 - (CGFloat)maxSectionHeight;
 - (CGFloat)stackedSectionHeight;
 - (CGFloat)stackedSectionHeightUpToSection:(NSInteger)upToSection;
@@ -678,6 +677,18 @@ NSUInteger const MSCollectionMinBackgroundZ = 0.0;
         return self.dayColumnHeaderBackgroundAttributes[indexPath];
     }
     return nil;
+}
+
+- (NSIndexSet *)sectionsInRect:(CGRect)rect
+{
+  NSMutableIndexSet *visibleSections = [NSMutableIndexSet indexSet];
+  [[NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, self.collectionView.numberOfSections)] enumerateIndexesUsingBlock:^(NSUInteger section, BOOL *stop) {
+    CGRect sectionRect = [self rectForSection:section];
+    if (CGRectIntersectsRect(sectionRect, rect)) {
+      [visibleSections addIndex:section];
+    }
+  }];
+  return visibleSections;
 }
 
 - (NSArray *)layoutAttributesForElementsInRect:(CGRect)rect

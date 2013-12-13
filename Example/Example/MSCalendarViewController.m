@@ -20,6 +20,7 @@
 #import "MSCurrentTimeGridline.h"
 
 #import <EventKit/EventKit.h>
+#import "../../MSCollectionViewCalendarLayout/MSCollectionViewCalendarLayout+TouchTime.h"
 
 NSString * const MSEventCellReuseIdentifier = @"MSEventCellReuseIdentifier";
 NSString * const MSDayColumnHeaderReuseIdentifier = @"MSDayColumnHeaderReuseIdentifier";
@@ -41,8 +42,22 @@ NSString * const MSTimeRowHeaderReuseIdentifier = @"MSTimeRowHeaderReuseIdentifi
     self.collectionViewCalendarLayout = [[MSCollectionViewCalendarLayout alloc] init];
     self.collectionViewCalendarLayout.delegate = self;
     self = [super initWithCollectionViewLayout:self.collectionViewCalendarLayout];
+    
+    UILongPressGestureRecognizer* longGesture = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(onLongPress:)];
+    [self.collectionView addGestureRecognizer:longGesture];
+    
     return self;
 }
+
+-(void)onLongPress:(UILongPressGestureRecognizer*)recoginzer {
+    if (recoginzer.state == UIGestureRecognizerStateBegan) {
+       NSDate* date = [_collectionViewCalendarLayout timeForPoint:[recoginzer locationInView:self.collectionView]];
+        UIAlertView* alert = [[UIAlertView alloc] initWithTitle:@"touchTime" message:[date descriptionWithLocale:[NSLocale currentLocale] ]
+                                                                                                        delegate:nil cancelButtonTitle:@"ok" otherButtonTitles: nil];
+        [alert show];
+    }
+}
+
 
 -(void)scrollViewDidScroll:(UIScrollView *)scrollView {
     if (_collectionViewCalendarLayout.sectionLayoutType == MSSectionLayoutTypeHorizontalTile) {
@@ -127,6 +142,7 @@ NSString * const MSTimeRowHeaderReuseIdentifier = @"MSTimeRowHeaderReuseIdentifi
     self.collectionViewCalendarLayout.sectionLayoutType = MSSectionLayoutTypeHorizontalTile;
     self.collectionView.backgroundColor = [UIColor whiteColor];
     self.collectionView.showsHorizontalScrollIndicator = NO;
+    self.collectionViewCalendarLayout.hourHeight = 40;
     
     [self.collectionView registerClass:MSEventCell.class forCellWithReuseIdentifier:MSEventCellReuseIdentifier];
     [self.collectionView registerClass:MSDayColumnHeader.class forSupplementaryViewOfKind:MSCollectionElementKindDayColumnHeader withReuseIdentifier:MSDayColumnHeaderReuseIdentifier];

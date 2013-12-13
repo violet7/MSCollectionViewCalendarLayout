@@ -1148,6 +1148,8 @@ NSUInteger const MSCollectionMinBackgroundZ = 0.0;
 
 - (NSInteger)earliestHourForSection:(NSInteger)section
 {
+    return 0;
+  
     if (self.cachedEarliestHours[@(section)]) {
         return [self.cachedEarliestHours[@(section)] integerValue];
     }
@@ -1169,6 +1171,8 @@ NSUInteger const MSCollectionMinBackgroundZ = 0.0;
 
 - (NSInteger)latestHourForSection:(NSInteger)section
 {
+  return 24;
+  
     if (self.cachedLatestHours[@(section)]) {
         return [self.cachedLatestHours[@(section)] integerValue];
     }
